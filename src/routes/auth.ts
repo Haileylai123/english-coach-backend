@@ -25,14 +25,14 @@ export async function authRoutes(
     return errorResponse('Invalid JSON body', 400);
   }
 
-  if (path === '/api/auth/register') return await handleRegister(body, env);
-  if (path === '/api/auth/login') return await handleLogin(body, env);
+  if (path === '/api/auth/register') return await handleRegister(body, env, request);
+  if (path === '/api/auth/login') return await handleLogin(body, env, request);
   if (path === '/api/auth/refresh') return await handleRefresh(body, env);
 
   return errorResponse('Unknown auth route', 404);
 }
 
-async function handleRegister(body: any, env: Env): Promise<Response> {
+async function handleRegister(body: any, env: Env, request: Request): Promise<Response> {
   const { email, password, displayName, locale } = body || {};
   if (!email || !password) return errorResponse('Email and password required', 400);
   if (password.length < 6) return errorResponse('Password must be at least 6 characters', 400);
@@ -62,7 +62,7 @@ async function handleRegister(body: any, env: Env): Promise<Response> {
   return await issueTokens(userId, email, env, request);
 }
 
-async function handleLogin(body: any, env: Env): Promise<Response> {
+async function handleLogin(body: any, env: Env, request: Request): Promise<Response> {
   const { email, password } = body || {};
   if (!email || !password) return errorResponse('Email and password required', 400);
 

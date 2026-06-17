@@ -10,6 +10,7 @@ import { uploadRoutes } from './routes/upload';
 import { notificationRoutes } from './routes/notifications';
 import { adminRoutes } from './routes/admin';
 import { dailyChallengeRoutes } from './routes/daily-challenge';
+import { adminUIRoute } from './routes/admin-ui';
 import { jsonResponse, errorResponse, handleCors } from './lib/response';
 
 type Handler = (request: Request, env: Env, ctx: ExecutionContext, userId: string | null) => Promise<Response>;
@@ -19,6 +20,7 @@ const routes: Array<[string, string, Handler | AdminHandler, boolean?]> = [
   // Public
   ['GET', '/api/health', healthRoute as any],
   ['GET', '/api/health/ready', healthReadyRoute as any],
+  ['GET', '/admin', adminUIRoute as any],
 
   // Auth
   ['POST', '/api/auth/register', authRoutes],

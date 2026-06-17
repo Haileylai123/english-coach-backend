@@ -64,7 +64,7 @@ FREE_AI_QUOTA_PER_DAY = "20"
 PRO_AI_QUOTA_PER_DAY = "500"
 JWT_EXPIRY = "3600"             # 1 hour
 REFRESH_EXPIRY = "2592000"      # 30 days
-ADMIN_EMAILS = ""               # comma-separated, grants /api/admin/*
+ADMIN_EMAILS = "ai.caseylai@gmail.com"  # comma-separated, grants /api/admin/*
 STREAK_REMINDER_HOUR = "20"     # 8 PM local
 DAILY_CHALLENGE_PUSH_HOUR = "0" # 9 AM Asia (0 UTC) — daily challenge push
 
