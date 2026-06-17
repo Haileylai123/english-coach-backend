@@ -17,13 +17,14 @@ export interface Env {
   PRO_AI_QUOTA_PER_DAY: string;
   JWT_EXPIRY: string;
   REFRESH_EXPIRY: string;
-  ANTHROPIC_API_KEY: string;
+  AI: Ai;
   JWT_SECRET: string;
   REFRESH_SECRET: string;
   ADMIN_EMAILS?: string;
   R2_SIGNING_KEY?: string;
   STRIPE_SECRET?: string;
   APPLE_SHARED_SECRET?: string;
+  DAILY_CHALLENGE_PUSH_HOUR?: string;
 }
 
 export default {
@@ -39,7 +40,7 @@ export default {
     let userId: string | null = null;
     let isAdmin = false;
 
-    if (path.startsWith('/api/') && !path.startsWith('/api/auth/') && path !== '/api/health' && path !== '/api/health/ready') {
+    if (path.startsWith('/api/') && !path.startsWith('/api/auth/') && path !== '/api/health' && path !== '/api/health/ready' && !path.startsWith('/api/daily-challenge/today')) {
       const auth = request.headers.get('Authorization');
       if (auth?.startsWith('Bearer ')) {
         const token = auth.slice(7);
@@ -84,6 +85,7 @@ export default {
     console.log('[cron]', cron, new Date().toISOString());
     try {
       if (cron === '0 0 * * *') await dailyReset(env);
+      else if (cron === '0 1 * * *') await dailyChallengePush(env);
       else if (cron === '0 12 * * *') await streakReminderFanout(env);
       else if (cron === '0 3 * * 0') await r2Cleanup(env);
     } catch (e) {
@@ -148,6 +150,42 @@ async function r2Cleanup(env: Env): Promise<void> {
   console.log(`[cron] r2 cleanup deleted ${deleted} old audio files`);
 }
 
+/** Push the daily challenge at 9 AM Asia time (1 UTC) to all opted-in users. */
+async function dailyChallengePush(env: Env): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  // Find scene for today (mirrors pickDailyPrompt in daily-challenge.ts)
+  const d = new Date(today + 'T00:00:00Z');
+  const start = new Date(Date.UTC(d.getUTCFullYear(), 0, 0));
+  const dayOfYear = Math.floor((d.getTime() - start.getTime()) / 86400_000);
+  const scenes = ['daily', 'business', 'ielts', 'interview', 'dating', 'keigo', 'izakaya', 'toeic', 'job-hunt-kr'];
+  const scene = scenes[dayOfYear % scenes.length];
+  // Skip if user already did today's challenge
+  const users = await env.DB.prepare(`
+    SELECT u.id, u.locale FROM users u
+    WHERE u.notify_enabled = 1
+      AND u.id NOT IN (SELECT user_id FROM daily_challenge_completions WHERE challenge_date = ?)
+  `).bind(today).all<{ id: string; locale: string }>();
+  console.log(`[cron] daily challenge push for ${users.results.length} users (${scene})`);
+  const { sendPushToUser } = await import('./lib/push-fanout');
+  for (const u of users.results) {
+    const title = u.locale?.startsWith('ja') ? '🎯 今日のチャレンジ'
+      : u.locale?.startsWith('ko') ? '🎯 오늘의 챌린지'
+      : u.locale?.startsWith('en') ? '🎯 Daily Challenge'
+      : u.locale?.startsWith('zh-CN') ? '🎯 每日挑战'
+      : '🎯 今日挑戰';
+    const body = u.locale?.startsWith('ja') ? '30秒で高スコアを狙え!'
+      : u.locale?.startsWith('ko') ? '30초 안에 고득점 도전!'
+      : u.locale?.startsWith('en') ? 'Beat yesterday\'s score in 30 seconds!'
+      : u.locale?.startsWith('zh-CN') ? '30 秒挑战高分!'
+      : '30 秒鬥高分!';
+    await sendPushToUser(env, u.id, {
+      title,
+      body,
+      data: { type: 'daily_challenge', scene, date: today },
+    });
+  }
+}
+
 async function handleQueueMessage(body: { type: string; payload: any }, env: Env) {
   switch (body.type) {
     case 'analyze_deep':
@@ -159,29 +197,11 @@ async function handleQueueMessage(body: { type: string; payload: any }, env: Env
     case 'cleanup_audio':
       await r2Cleanup(env);
       break;
+    case 'daily_challenge_fanout':
+      await dailyChallengePush(env);
+      break;
     default:
       console.warn('[queue] unknown type', body.type);
   }
 }
 
-export const healthRoute = async (request: Request, env: Env): Promise<Response> => {
-  return jsonResponse({ status: 'ok', env: env.ENVIRONMENT, time: new Date().toISOString() });
-};
-
-export const healthReadyRoute = async (request: Request, env: Env): Promise<Response> => {
-  const checks: Record<string, string> = {};
-  try {
-    await env.DB.prepare('SELECT 1 AS x').first();
-    checks.database = 'ok';
-  } catch (e: any) { checks.database = `error: ${e.message}`; }
-  try {
-    await env.KV.get('health-check');
-    checks.kv = 'ok';
-  } catch (e: any) { checks.kv = `error: ${e.message}`; }
-  try {
-    await env.AUDIO.head('health-check-probe');
-    checks.r2 = 'ok';
-  } catch (e: any) { checks.r2 = e.message?.includes('NotFound') ? 'ok' : `error: ${e.message}`; }
-  const allOk = Object.values(checks).every(v => v === 'ok');
-  return jsonResponse({ status: allOk ? 'ok' : 'degraded', checks }, allOk ? 200 : 503);
-};

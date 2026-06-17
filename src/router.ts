@@ -1,5 +1,6 @@
 // src/router.ts — Simple route table
-import { Env, healthRoute, healthReadyRoute } from './index';
+import { healthRoute, healthReadyRoute } from './routes/health';
+import { Env } from './index';
 import { authRoutes } from './routes/auth';
 import { userRoutes } from './routes/user';
 import { syncRoutes } from './routes/sync';
@@ -8,6 +9,7 @@ import { subscriptionRoutes } from './routes/subscription';
 import { uploadRoutes } from './routes/upload';
 import { notificationRoutes } from './routes/notifications';
 import { adminRoutes } from './routes/admin';
+import { dailyChallengeRoutes } from './routes/daily-challenge';
 import { jsonResponse, errorResponse, handleCors } from './lib/response';
 
 type Handler = (request: Request, env: Env, ctx: ExecutionContext, userId: string | null) => Promise<Response>;
@@ -52,6 +54,7 @@ const routes: Array<[string, string, Handler | AdminHandler, boolean?]> = [
   ['GET', '/api/subscription', subscriptionRoutes],
   ['POST', '/api/subscription/checkout', subscriptionRoutes],
   ['POST', '/api/subscription/cancel', subscriptionRoutes],
+  ['POST', '/api/subscription/dev-upgrade', subscriptionRoutes],
   ['POST', '/api/subscription/webhook', subscriptionRoutes],
 
   // Upload
@@ -69,6 +72,13 @@ const routes: Array<[string, string, Handler | AdminHandler, boolean?]> = [
   ['GET', '/api/admin/ai-usage', adminRoutes as any, true],
   ['GET', '/api/admin/recent-analyses', adminRoutes as any, true],
   ['POST', '/api/admin/broadcast', adminRoutes as any, true],
+
+  // Daily Challenge (today is public; rest require auth)
+  ['GET', '/api/daily-challenge/today', dailyChallengeRoutes],
+  ['POST', '/api/daily-challenge/complete', dailyChallengeRoutes],
+  ['GET', '/api/daily-challenge/leaderboard', dailyChallengeRoutes],
+  ['GET', '/api/daily-challenge/streak', dailyChallengeRoutes],
+  ['GET', '/api/daily-challenge/my-history', dailyChallengeRoutes],
 ];
 
 export async function router(

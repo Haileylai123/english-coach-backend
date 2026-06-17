@@ -9,7 +9,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "english-coach-db"
-database_id = "REPLACE_WITH_REAL_DB_ID"
+database_id = "510c31cd-316e-4688-aa6a-13ae5dcfb6de"
 migrations_dir = "migrations"
 
 # ─────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ migrations_dir = "migrations"
 # ─────────────────────────────────────────────────────────
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_REAL_KV_ID"
+id = "e1a800b5737e42abb24ddf69fb7d746d"
 
 # ─────────────────────────────────────────────────────────
 # R2 (object storage, audio + exports)
@@ -41,11 +41,16 @@ max_batch_timeout = 30
 max_retries = 3
 
 # ─────────────────────────────────────────────────────────
+# Workers AI (free tier — Llama 4 Scout)
+# ─────────────────────────────────────────────────────────
+[ai]
+binding = "AI"
+
+# ─────────────────────────────────────────────────────────
 # Secrets (set with `wrangler secret put NAME`)
 # ─────────────────────────────────────────────────────────
-# ANTHROPIC_API_KEY  — Claude API
-# JWT_SECRET         — HS256 signing key
-# REFRESH_SECRET     — refresh token signing key
+# JWT_SECRET         — HS256 signing key (already set)
+# REFRESH_SECRET     — refresh token signing key (already set)
 # APPLE_SHARED_SECRET / STRIPE_SECRET — payment webhooks
 # R2_SIGNING_KEY     — presigned URL signing
 
@@ -61,6 +66,7 @@ JWT_EXPIRY = "3600"             # 1 hour
 REFRESH_EXPIRY = "2592000"      # 30 days
 ADMIN_EMAILS = ""               # comma-separated, grants /api/admin/*
 STREAK_REMINDER_HOUR = "20"     # 8 PM local
+DAILY_CHALLENGE_PUSH_HOUR = "0" # 9 AM Asia (0 UTC) — daily challenge push
 
 # ─────────────────────────────────────────────────────────
 # Cron Triggers
@@ -68,6 +74,7 @@ STREAK_REMINDER_HOUR = "20"     # 8 PM local
 [triggers]
 crons = [
   "0 0 * * *",       # midnight UTC — daily reset
+  "0 1 * * *",       # 9 AM Asia (1 UTC) — daily challenge push
   "0 12 * * *",      # noon UTC — streak reminder
   "0 3 * * 0",       # Sunday 3am UTC — weekly R2 cleanup
 ]

@@ -1,4 +1,5 @@
-// src/lib/claude.ts — Claude API proxy (server holds the key)
+// src/lib/claude.ts — AI provider adapter (Cloudflare Workers AI)
+// Uses Workers AI free tier (Llama 4 Scout by default)
 import { Env } from '../index';
 
 export interface ClaudeMessage {
@@ -10,36 +11,34 @@ export interface ClaudeRequest {
   system?: string;
   messages: ClaudeMessage[];
   max_tokens?: number;
-  model?: 'claude-3-5-haiku-20241022' | 'claude-3-5-sonnet-20241022';
+  model?: string; // Workers AI model id
 }
 
+const DEFAULT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+
 export async function callClaude(env: Env, req: ClaudeRequest): Promise<{ content: string; input_tokens: number; output_tokens: number }> {
-  if (!env.ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY not configured');
+  const model = req.model || DEFAULT_MODEL;
+
+  // Workers AI uses messages array — system prompt is a message with role: 'system'
+  const messages: { role: string; content: string }[] = [];
+  if (req.system) {
+    messages.push({ role: 'system', content: req.system });
   }
-  const model = req.model || 'claude-3-5-haiku-20241022';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
+  messages.push(...req.messages);
+
+  try {
+    const response = await env.AI.run(model, {
+      messages,
       max_tokens: req.max_tokens || 1024,
-      system: req.system,
-      messages: req.messages,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Claude API error (${res.status}): ${err}`);
+      temperature: 0.7,
+    });
+
+    return {
+      content: (response as any).response || '',
+      input_tokens: (response as any).usage?.prompt_tokens || 0,
+      output_tokens: (response as any).usage?.completion_tokens || 0,
+    };
+  } catch (err: any) {
+    throw new Error(`Workers AI error: ${err?.message || err}`);
   }
-  const data: any = await res.json();
-  return {
-    content: data.content?.[0]?.text || '',
-    input_tokens: data.usage?.input_tokens || 0,
-    output_tokens: data.usage?.output_tokens || 0,
-  };
 }

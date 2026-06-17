@@ -230,3 +230,45 @@ CREATE TABLE IF NOT EXISTS scene_stats (
   UNIQUE(user_id, scene)
 );
 CREATE INDEX IF NOT EXISTS idx_scene_stats_user ON scene_stats(user_id);
+
+-- Daily Challenge completions (viral engine)
+CREATE TABLE IF NOT EXISTS daily_challenge_completions (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL,
+  challenge_date  TEXT NOT NULL,
+  scene           TEXT NOT NULL,
+  score           INTEGER NOT NULL,
+  market          TEXT,
+  duration_ms     INTEGER,
+  transcript      TEXT,
+  audio_url       TEXT,
+  shared          INTEGER DEFAULT 0,
+  shared_at       INTEGER,
+  created_at      INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, challenge_date)
+);
+CREATE INDEX IF NOT EXISTS idx_dcc_date_score ON daily_challenge_completions(challenge_date, score DESC);
+CREATE INDEX IF NOT EXISTS idx_dcc_user_date ON daily_challenge_completions(user_id, challenge_date DESC);
+
+-- Daily Challenge prompts (admin can override the rotating default)
+CREATE TABLE IF NOT EXISTS daily_challenge_prompts (
+  id              TEXT PRIMARY KEY,
+  challenge_date  TEXT UNIQUE NOT NULL,
+  scene           TEXT NOT NULL,
+  prompt_en       TEXT NOT NULL,
+  prompt_translations TEXT,
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dcp_date ON daily_challenge_prompts(challenge_date);
+
+-- Daily Challenge streak (per user)
+CREATE TABLE IF NOT EXISTS daily_streaks (
+  user_id         TEXT PRIMARY KEY,
+  current_streak  INTEGER DEFAULT 0,
+  longest_streak  INTEGER DEFAULT 0,
+  last_completed  TEXT,
+  total_days      INTEGER DEFAULT 0,
+  updated_at      INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
