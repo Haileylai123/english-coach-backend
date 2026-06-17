@@ -1,0 +1,73 @@
+name = "english-coach-backend"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ─────────────────────────────────────────────────────────
+# D1 (SQLite at the edge)
+# ─────────────────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "english-coach-db"
+database_id = "REPLACE_WITH_REAL_DB_ID"
+migrations_dir = "migrations"
+
+# ─────────────────────────────────────────────────────────
+# KV (key-value cache, sessions)
+# ─────────────────────────────────────────────────────────
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_REAL_KV_ID"
+
+# ─────────────────────────────────────────────────────────
+# R2 (object storage, audio + exports)
+# ─────────────────────────────────────────────────────────
+[[r2_buckets]]
+binding = "AUDIO"
+bucket_name = "english-coach-audio"
+preview_bucket_name = "english-coach-audio-dev"
+
+# ─────────────────────────────────────────────────────────
+# Queues (background jobs)
+# ─────────────────────────────────────────────────────────
+[[queues.producers]]
+binding = "QUEUE"
+queue = "english-coach-jobs"
+
+[[queues.consumers]]
+queue = "english-coach-jobs"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+
+# ─────────────────────────────────────────────────────────
+# Secrets (set with `wrangler secret put NAME`)
+# ─────────────────────────────────────────────────────────
+# ANTHROPIC_API_KEY  — Claude API
+# JWT_SECRET         — HS256 signing key
+# REFRESH_SECRET     — refresh token signing key
+# APPLE_SHARED_SECRET / STRIPE_SECRET — payment webhooks
+# R2_SIGNING_KEY     — presigned URL signing
+
+# ─────────────────────────────────────────────────────────
+# Environment vars (non-secret)
+# ─────────────────────────────────────────────────────────
+[vars]
+ENVIRONMENT = "development"
+ALLOWED_ORIGIN = "*"
+FREE_AI_QUOTA_PER_DAY = "20"
+PRO_AI_QUOTA_PER_DAY = "500"
+JWT_EXPIRY = "3600"             # 1 hour
+REFRESH_EXPIRY = "2592000"      # 30 days
+ADMIN_EMAILS = ""               # comma-separated, grants /api/admin/*
+STREAK_REMINDER_HOUR = "20"     # 8 PM local
+
+# ─────────────────────────────────────────────────────────
+# Cron Triggers
+# ─────────────────────────────────────────────────────────
+[triggers]
+crons = [
+  "0 0 * * *",       # midnight UTC — daily reset
+  "0 12 * * *",      # noon UTC — streak reminder
+  "0 3 * * 0",       # Sunday 3am UTC — weekly R2 cleanup
+]
