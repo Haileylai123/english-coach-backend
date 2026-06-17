@@ -1,5 +1,4 @@
-// src/lib/claude.ts — AI provider adapter (Cloudflare Workers AI)
-// Uses Workers AI free tier (Llama 4 Scout by default)
+// src/lib/claude.ts — Minimax (Claude proxy) AI adapter
 import { Env } from '../index';
 
 export interface ClaudeMessage {
@@ -11,34 +10,45 @@ export interface ClaudeRequest {
   system?: string;
   messages: ClaudeMessage[];
   max_tokens?: number;
-  model?: string; // Workers AI model id
+  model?: string;
 }
 
-const DEFAULT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
+const MINIMAX_BASE_URL = 'https://api.minimax.io/anthropic';
+const DEFAULT_MODEL = 'MiniMax-M3';
 
 export async function callClaude(env: Env, req: ClaudeRequest): Promise<{ content: string; input_tokens: number; output_tokens: number }> {
+  if (!env.MINIMAX_API_KEY) {
+    throw new Error('MINIMAX_API_KEY not configured');
+  }
+
   const model = req.model || DEFAULT_MODEL;
 
-  // Workers AI uses messages array — system prompt is a message with role: 'system'
-  const messages: { role: string; content: string }[] = [];
-  if (req.system) {
-    messages.push({ role: 'system', content: req.system });
-  }
-  messages.push(...req.messages);
+  const body: Record<string, any> = {
+    model,
+    max_tokens: req.max_tokens || 1024,
+    messages: req.messages,
+  };
+  if (req.system) body.system = req.system;
 
-  try {
-    const response = await env.AI.run(model, {
-      messages,
-      max_tokens: req.max_tokens || 1024,
-      temperature: 0.7,
-    });
+  const res = await fetch(`${MINIMAX_BASE_URL}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.MINIMAX_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  });
 
-    return {
-      content: (response as any).response || '',
-      input_tokens: (response as any).usage?.prompt_tokens || 0,
-      output_tokens: (response as any).usage?.completion_tokens || 0,
-    };
-  } catch (err: any) {
-    throw new Error(`Workers AI error: ${err?.message || err}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Minimax API error (${res.status}): ${err}`);
   }
+
+  const data: any = await res.json();
+  return {
+    content: data.content?.[0]?.text || '',
+    input_tokens: data.usage?.input_tokens || 0,
+    output_tokens: data.usage?.output_tokens || 0,
+  };
 }

@@ -11,6 +11,7 @@ import { notificationRoutes } from './routes/notifications';
 import { adminRoutes } from './routes/admin';
 import { dailyChallengeRoutes } from './routes/daily-challenge';
 import { adminUIRoute } from './routes/admin-ui';
+import { ttsRoutes } from './routes/tts';
 import { jsonResponse, errorResponse, handleCors } from './lib/response';
 
 type Handler = (request: Request, env: Env, ctx: ExecutionContext, userId: string | null) => Promise<Response>;
@@ -67,6 +68,10 @@ const routes: Array<[string, string, Handler | AdminHandler, boolean?]> = [
   ['POST', '/api/notifications/register', notificationRoutes],
   ['POST', '/api/notifications/unregister', notificationRoutes],
   ['POST', '/api/notifications/test', notificationRoutes],
+
+  // TTS (Minimax, R2-cached)
+  ['GET', '/api/tts/voices', ttsRoutes],
+  ['POST', '/api/tts/speak', ttsRoutes],
 
   // Admin (gated by ADMIN_EMAILS)
   ['GET', '/api/admin/stats', adminRoutes as any, true],

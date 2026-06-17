@@ -20,6 +20,7 @@ export interface Env {
   AI: Ai;
   JWT_SECRET: string;
   REFRESH_SECRET: string;
+  MINIMAX_API_KEY: string;
   ADMIN_EMAILS?: string;
   R2_SIGNING_KEY?: string;
   STRIPE_SECRET?: string;

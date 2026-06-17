@@ -124,8 +124,11 @@ const BASE = '';
 let token = localStorage.getItem('admin_token');
 
 function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (opts.headers) Object.assign(headers, opts.headers);
   return fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...opts.headers },
+    headers,
     ...opts,
   }).then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })));
 }
@@ -143,13 +146,13 @@ async function login(e) {
     body: JSON.stringify({ email, password }),
   });
 
-  if (!ok || !data.token) {
-    errEl.textContent = data.error || 'Login failed';
+  if (!ok || !data.accessToken) {
+    errEl.textContent = (data && data.error) || 'Login failed';
     return;
   }
 
   // Check if user is admin
-  token = data.token;
+  token = data.accessToken;
   localStorage.setItem('admin_token', token);
 
   // Test admin access
