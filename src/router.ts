@@ -12,6 +12,7 @@ import { adminRoutes } from './routes/admin';
 import { dailyChallengeRoutes } from './routes/daily-challenge';
 import { adminUIRoute } from './routes/admin-ui';
 import { ttsRoutes } from './routes/tts';
+import { sttRoutes } from './routes/stt';
 import { jsonResponse, errorResponse, handleCors } from './lib/response';
 
 type Handler = (request: Request, env: Env, ctx: ExecutionContext, userId: string | null) => Promise<Response>;
@@ -72,6 +73,9 @@ const routes: Array<[string, string, Handler | AdminHandler, boolean?]> = [
   // TTS (Minimax, R2-cached)
   ['GET', '/api/tts/voices', ttsRoutes],
   ['POST', '/api/tts/speak', ttsRoutes],
+
+  // STT (Cloudflare Workers AI Whisper)
+  ['POST', '/api/stt/transcribe', sttRoutes],
 
   // Admin (gated by ADMIN_EMAILS)
   ['GET', '/api/admin/stats', adminRoutes as any, true],

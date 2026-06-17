@@ -7,10 +7,8 @@ const MINIMAX_TTS_URL = 'https://api.minimax.io/v1/t2a_v2';
 const VOICES = {
   en_warm_man: 'English_Trustworth_Man',
   en_warm_woman: 'English_Graceful_Lady',
+  en_upbeat_woman: 'English_Upbeat_Woman',
   en_excited_man: 'English_PassionateWarrior',
-  zh_male: 'male-qn-qingse',
-  zh_female: 'female-shaonv',
-  zh_business: 'presenter_male',
 } as const;
 export type VoiceKey = keyof typeof VOICES;
 
